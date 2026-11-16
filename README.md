@@ -2,8 +2,8 @@
 
 A two-page Power BI report on 119,390 real bookings from two hotels in Portugal, a city hotel in Lisbon and a resort in the Algarve, with arrivals from July 2015 to August 2017. The report answers where growth came from and what cancellations cost.
 
-![Executive overview](images/executive_overview.png)
-![Cancellations](images/cancellations.png)
+![Executive overview](executive_overview.png)
+![Cancellations](cancellations.png)
 
 ## Key findings
 
@@ -93,10 +93,11 @@ Questions scoped out of this version:
 | File | Description |
 |---|---|
 | `Hotel_Demand_Dashboard.pbix` | The Power BI report and model |
+| `Hotel_Demand_Dashboard.pdf` | PDF export of both report pages |
 | `Bookings_PowerQuery.pq` | Power Query (M) cleaning script |
 | `measures.dax` | Date table, Comparable column and all 21 measures |
 | `Azulejo_theme.json` | Report theme |
-| `images/` | Report screenshots |
+| `executive_overview.png`, `cancellations.png` | Report screenshots |
 
 ## Tools
 
