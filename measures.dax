@@ -1,0 +1,78 @@
+// =====================================================================
+// Hotel Booking Demand Dashboard: all DAX used in the model
+// Fact table: Bookings (119,208 rows). Dimension: Date.
+// =====================================================================
+
+
+// ---------------------------------------------------------------------
+// Calculated table: Date
+// Full calendar years so time intelligence works (1 Jan 2015 to 31 Dec 2017).
+// Marked as the date table. Relationship: Date[Date] 1 to many Bookings[Arrival Date].
+// ---------------------------------------------------------------------
+Date =
+VAR MinDate = DATE ( YEAR ( MIN ( Bookings[Arrival Date] ) ), 1, 1 )
+VAR MaxDate = DATE ( YEAR ( MAX ( Bookings[Arrival Date] ) ), 12, 31 )
+RETURN
+    ADDCOLUMNS (
+        CALENDAR ( MinDate, MaxDate ),
+        "Year", YEAR ( [Date] ),
+        "Quarter", "Q" & QUARTER ( [Date] ),
+        "Month Number", MONTH ( [Date] ),
+        "Month", FORMAT ( [Date], "mmm" ),
+        "Year Month Number", YEAR ( [Date] ) * 100 + MONTH ( [Date] ),
+        "Year Month", FORMAT ( [Date], "mmm yyyy" ),
+        "Week Number", WEEKNUM ( [Date], 21 ),
+        "Day of Week Number", WEEKDAY ( [Date], 2 ),
+        "Day of Week", FORMAT ( [Date], "ddd" ),
+        "Weekday or Weekend", IF ( WEEKDAY ( [Date], 2 ) >= 6, "Weekend", "Weekday" )
+    )
+
+
+// ---------------------------------------------------------------------
+// Calculated column on Date: Comparable
+// TRUE when the date has data AND the same date one year earlier also has data.
+// Used to make year over year comparisons like for like despite partial years.
+// ---------------------------------------------------------------------
+Comparable =
+VAR FirstData = MIN ( Bookings[Arrival Date] )
+VAR LastData = MAX ( Bookings[Arrival Date] )
+RETURN
+    'Date'[Date] <= LastData
+        && EDATE ( 'Date'[Date], -12 ) >= FirstData
+
+
+// ---------------------------------------------------------------------
+// Measures (home table: Bookings)
+// ---------------------------------------------------------------------
+
+// Counts
+Total Bookings = COUNTROWS ( Bookings )
+Canceled Bookings = CALCULATE ( [Total Bookings], Bookings[Is Canceled] = 1 )
+Stays = CALCULATE ( [Total Bookings], Bookings[Is Canceled] = 0 )
+Cancellation Rate = DIVIDE ( [Canceled Bookings], [Total Bookings] )
+
+// Money (revenue = ADR x nights, realized only when not cancelled)
+Booked Value = SUMX ( Bookings, Bookings[ADR] * Bookings[Total Nights] )
+Realized Revenue = CALCULATE ( [Booked Value], Bookings[Is Canceled] = 0 )
+Lost Revenue = CALCULATE ( [Booked Value], Bookings[Is Canceled] = 1 )
+Lost Revenue % = DIVIDE ( [Lost Revenue], [Booked Value] )
+Room Nights = CALCULATE ( SUM ( Bookings[Total Nights] ), Bookings[Is Canceled] = 0 )
+Realized ADR = DIVIDE ( [Realized Revenue], [Room Nights] )    // weighted, as hotels report it
+
+// Guest behaviour
+Avg Length of Stay = DIVIDE ( [Room Nights], [Stays] )
+Avg Lead Time = AVERAGE ( Bookings[Lead Time (Days)] )
+Repeat Guest Share = DIVIDE ( CALCULATE ( [Stays], Bookings[Is Repeat Guest] = 1 ), [Stays] )
+Family Share = DIVIDE ( CALCULATE ( [Stays], Bookings[Party Type] = "Family" ), [Stays] )
+Weekend Night Share =
+    DIVIDE ( CALCULATE ( SUM ( Bookings[Weekend Nights] ), Bookings[Is Canceled] = 0 ), [Room Nights] )
+
+// Like for like year over year
+Stays Comparable = CALCULATE ( [Stays], 'Date'[Comparable] = TRUE () )
+Stays PY =
+    CALCULATE ( [Stays], CALCULATETABLE ( SAMEPERIODLASTYEAR ( 'Date'[Date] ), 'Date'[Comparable] = TRUE () ) )
+Stays YoY % = DIVIDE ( [Stays Comparable] - [Stays PY], [Stays PY] )
+Revenue Comparable = CALCULATE ( [Realized Revenue], 'Date'[Comparable] = TRUE () )
+Revenue PY =
+    CALCULATE ( [Realized Revenue], CALCULATETABLE ( SAMEPERIODLASTYEAR ( 'Date'[Date] ), 'Date'[Comparable] = TRUE () ) )
+Revenue YoY % = DIVIDE ( [Revenue Comparable] - [Revenue PY], [Revenue PY] )
